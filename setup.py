@@ -16,7 +16,7 @@ setup(
     project_urls={
         'Bug Tracker': 'https://github.com/zalkikar/mlm-bias/issues',
     },
-    python_requires=">=3.8, <3.11",
+    python_requires=">=3.8, <3.12",
     packages=find_packages(),
     install_requires=[
         "transformers>=4.35.0",

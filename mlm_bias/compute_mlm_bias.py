@@ -44,11 +44,29 @@ class BiasMLM():
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path)
         self.mask_id = self.tokenizer.mask_token_id
         self.device = None
+        if device is None:
+            if torch.cuda.is_available():
+                device = "cuda"
+            elif torch.backends.mps.is_available():
+                device = "mps"
+            else:
+                device = "cpu"
         if device is not None:
-            if not torch.cuda.is_available() and device == 'cuda':
-                raise Exception("Cuda Not Available")
+            if device == 'cuda' and not torch.cuda.is_available():
+                raise Exception("CUDA Not Available")
+            elif device == 'mps' and not torch.backends.mps.is_available():
+                raise Exception("MPS Not Available")
             self.device = device
-            self.model.to(self.device)
+        else:
+            # Auto-detect device preference
+            if torch.cuda.is_available():
+                self.device = 'cuda'
+            elif torch.backends.mps.is_available():
+                self.device = 'mps'
+            else:
+                self.device = 'cpu'
+        print("OUR DEVICE IS", self.device)
+        self.model.to(self.device)
         self.model.eval()
         test_special = self.tokenizer.encode('test', add_special_tokens=True, return_tensors='pt')
         self.special_tok_s = test_special[0].tolist()[0]
