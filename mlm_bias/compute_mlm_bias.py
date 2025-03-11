@@ -6,6 +6,8 @@ import torch
 import numpy as np
 from typing import Optional
 from transformers import AutoConfig, AutoModelForMaskedLM, AutoTokenizer, BitsAndBytesConfig
+from bitsandbytes.nn import Int8Params, Params4bit
+
 from mlm_bias.bias_datasets import BiasDataset
 from mlm_bias.bias_results import BiasResults
 from mlm_bias.utils import (
@@ -107,6 +109,12 @@ class BiasMLM():
         print(f"Model loaded: {self.model_name_or_path}")
         print(f"Precision: {fp_precision}")
         print(f"Model dtype after loading: {next(self.model.parameters()).dtype}")
+
+        for name, param in self.model.named_parameters():
+            if isinstance(param, (Int8Params, Params4bit)):
+                print(f"Layer {name} is quantized with {type(param)}")
+        print(f"Memory allocated: {torch.cuda.memory_allocated() / 1e6} MB")
+
         print(f"Device: {self.device}")
         self.model.eval()
         test_special = self.tokenizer.encode('test', add_special_tokens=True, return_tensors='pt')
