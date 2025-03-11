@@ -62,7 +62,8 @@ class BiasMLM():
             self.model = AutoModelForMaskedLM.from_pretrained(
                 model_name_or_path,
                 quantization_config=quantization_config,
-                output_attentions = True
+                output_attentions = True,
+                attn_implementation="eager"
             )
         else:
             torch_dtype = precision_map.get(fp_precision, torch.float32)
@@ -70,7 +71,8 @@ class BiasMLM():
             self.model = AutoModelForMaskedLM.from_pretrained(
                 model_name_or_path,
                 torch_dtype=torch_dtype,
-                output_attentions = True
+                output_attentions = True,
+                attn_implementation="eager"
             ).to(device)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
         self.mask_id = self.tokenizer.mask_token_id
@@ -87,6 +89,17 @@ class BiasMLM():
         self.special_tok_e = test_special[0].tolist()[-1]
         self.supported_measures = SUPPORTED_MEASURES
         self.supported_measures_attention = SUPPORTED_MEASURES_ATTENTION
+        print(f"Model loaded: {model_name_or_path}")
+        print(f"Precision: {fp_precision}")
+        print(f"Model dtype after loading: {next(self.model.parameters()).dtype}")
+
+        # Print details about quantized layers
+        for name, param in self.model.named_parameters():
+            if isinstance(param, (Int8Params, Params4bit)):
+                print(f"Layer {name} is quantized with {type(param)}")
+
+        print(f"Cuda Memory allocated: {torch.cuda.memory_allocated() / 1e6} MB")
+        print(f"Device: {device}")
 
 
 
