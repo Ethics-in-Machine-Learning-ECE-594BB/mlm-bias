@@ -44,8 +44,6 @@ class BiasMLM():
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path)
         self.mask_id = self.tokenizer.mask_token_id
         self.device = None
-        config = mtq.INT8_SMOOTHQUANT_CFG
-        
         if device is None:
             if torch.cuda.is_available():
                 device = "cuda"

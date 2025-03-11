@@ -5,7 +5,7 @@ import time
 import torch
 import numpy as np
 from typing import Optional
-from transformers import AutoConfig, AutoModelForMaskedLM, AutoTokenizer
+from transformers import AutoConfig, AutoModelForMaskedLM, AutoTokenizer, BitsAndBytesConfig
 from mlm_bias.bias_datasets import BiasDataset
 from mlm_bias.bias_results import BiasResults
 from mlm_bias.utils import (
@@ -31,40 +31,81 @@ class BiasMLM():
         model_name_or_path: str,
         dataset: BiasDataset,
         device: Optional[str] = None,
+        fp_precision: Optional[str] = "float32", 
     ):
         self.results = BiasResults()
         self.dataset = dataset
         self.model_name_or_path = model_name_or_path
+        # Determine device
+        if device is None:
+            self.device = (
+                "mps" if torch.backends.mps.is_available() else
+                "cuda" if torch.cuda.is_available() else
+                "cpu"
+            )
+        else:
+            self.device = device
+        precision_map = {
+            "float32": torch.float32,
+            "float16": torch.float16,
+            "bfloat16": torch.bfloat16,
+        }
+        # 🚨 Check if device is "mps" and prevent bitsandbytes usage
+        if self.device == "mps" and fp_precision in ["8bit", "4bit"]:
+            raise ValueError("bitsandbytes 8-bit and 4-bit quantization is not supported on Apple MPS. Please use 'float16' or 'float32' instead.")
+
+        # Handle 8-bit and 4-bit quantization separately
+        if fp_precision in ["8bit", "4bit"]:
+            use_4bit = fp_precision == "4bit"
+            quantization_config = BitsAndBytesConfig(
+                load_in_4bit=use_4bit,
+                load_in_8bit=not use_4bit,
+                bnb_4bit_compute_dtype=torch.float16 if use_4bit else None,
+                bnb_4bit_use_double_quant=use_4bit
+            )
+
+            # Load model with bitsandbytes quantization
+            self.model = AutoModelForMaskedLM.from_pretrained(
+                self.model_name_or_path,
+                quantization_config=quantization_config
+            )
+        else:
+            # Load model with standard precision
+            torch_dtype = precision_map.get(fp_precision, torch.float32)
+            self.model = AutoModelForMaskedLM.from_pretrained(
+                self.model_name_or_path,
+                torch_dtype=torch_dtype
+            )
         self.model_config = AutoConfig.from_pretrained(
             pretrained_model_name_or_path=self.model_name_or_path,
             output_hidden_states=True,
             output_attentions=True,
             attn_implementation="eager")
+        # Load model with specified precision
+        self.model = AutoModelForMaskedLM.from_pretrained(
+            self.model_name_or_path, torch_dtype=torch_dtype
+        )
+
         self.model = AutoModelForMaskedLM.from_config(self.model_config)
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path)
         self.mask_id = self.tokenizer.mask_token_id
         self.device = None
-        if device is None:
-            if torch.cuda.is_available():
-                device = "cuda"
-            elif torch.backends.mps.is_available():
-                device = "mps"
-            else:
-                device = "cpu"
-        if device is not None:
-            if device == 'cuda' and not torch.cuda.is_available():
-                raise Exception("CUDA Not Available")
-            elif device == 'mps' and not torch.backends.mps.is_available():
-                raise Exception("MPS Not Available")
-            self.device = device
-        else:
-            # Auto-detect device preference
-            if torch.cuda.is_available():
-                self.device = 'cuda'
-            elif torch.backends.mps.is_available():
-                self.device = 'mps'
-            else:
-                self.device = 'cpu'
+        
+
+        # if device is not None:
+        #     if device == 'cuda' and not torch.cuda.is_available():
+        #         raise Exception("CUDA Not Available")
+        #     elif device == 'mps' and not torch.backends.mps.is_available():
+        #         raise Exception("MPS Not Available")
+        #     self.device = device
+        # else:
+        #     # Auto-detect device preference
+        #     if torch.cuda.is_available():
+        #         self.device = 'cuda'
+        #     elif torch.backends.mps.is_available():
+        #         self.device = 'mps'
+        #     else:
+        #         self.device = 'cpu'
         print("OUR DEVICE IS", self.device)
         self.model.to(self.device)
         self.model.eval()

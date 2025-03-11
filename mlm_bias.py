@@ -107,7 +107,8 @@ if __name__ == '__main__':
     out = ""
     model_name_or_path = args.model_name_or_path
     try:
-        model_bias = BiasMLM(args.model_name_or_path, dataset)
+        # model_bias = BiasMLM(args.model_name_or_path, dataset, fp_precision="float16")
+        model_bias = BiasMLM(args.model_name_or_path, dataset, fp_precision="8bit")
     except Exception as ex:
         raise Exception(f"Could not load {args.model_name_or_path}\n{ex}")
     if args.measures == 'all':
