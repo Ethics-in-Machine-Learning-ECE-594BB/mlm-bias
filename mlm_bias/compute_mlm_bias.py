@@ -71,10 +71,10 @@ class BiasMLM():
             output_hidden_states=True,
             output_attentions=True,
             attn_implementation="eager")
-        # Load model with specified precision
-        self.model = AutoModelForMaskedLM.from_pretrained(
-            self.model_name_or_path, torch_dtype=torch_dtype
-        )
+        # # Load model with specified precision
+        # self.model = AutoModelForMaskedLM.from_pretrained(
+        #     self.model_name_or_path, torch_dtype=torch_dtype
+        # )
 
         self.model = AutoModelForMaskedLM.from_config(self.model_config)
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path)
