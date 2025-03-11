@@ -104,6 +104,9 @@ class BiasMLM():
                 self.device = 'cpu'
         print("OUR DEVICE IS", self.device)
         self.model.to(self.device)
+        print(f"Model loaded: {self.model_name_or_path}")
+        print(f"Precision: {fp_precision}")
+        print(f"Device: {self.device}")
         self.model.eval()
         test_special = self.tokenizer.encode('test', add_special_tokens=True, return_tensors='pt')
         self.special_tok_s = test_special[0].tolist()[0]
