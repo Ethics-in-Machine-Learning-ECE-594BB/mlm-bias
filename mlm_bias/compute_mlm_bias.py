@@ -105,10 +105,24 @@ class BiasMLM():
             else:
                 self.device = 'cpu'
         print("OUR DEVICE IS", self.device)
+        if fp_precision in ["float16", "bfloat16"]:
+            torch_dtype = precision_map.get(fp_precision, torch.float32)
+
+            self.model = AutoModelForMaskedLM.from_pretrained(
+                self.model_name_or_path,
+                torch_dtype=torch_dtype
+            ).to(self.device)
+
+            # If model still loads in FP32, manually convert
+            if next(self.model.parameters()).dtype == torch.float32 and fp_precision == "float16":
+                print("Warning: Model loaded in FP32, forcing conversion to FP16.")
+                self.model = self.model.half()
+                
         self.model.to(self.device)
         print(f"Model loaded: {self.model_name_or_path}")
         print(f"Precision: {fp_precision}")
         print(f"Model dtype after loading: {next(self.model.parameters()).dtype}")
+
 
         for name, param in self.model.named_parameters():
             if isinstance(param, (Int8Params, Params4bit)):
