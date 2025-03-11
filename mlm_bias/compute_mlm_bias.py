@@ -106,6 +106,7 @@ class BiasMLM():
         self.model.to(self.device)
         print(f"Model loaded: {self.model_name_or_path}")
         print(f"Precision: {fp_precision}")
+        print(f"Model dtype after loading: {next(self.model.parameters()).dtype}")
         print(f"Device: {self.device}")
         self.model.eval()
         test_special = self.tokenizer.encode('test', add_special_tokens=True, return_tensors='pt')
