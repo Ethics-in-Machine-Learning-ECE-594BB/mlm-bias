@@ -46,7 +46,7 @@ class BiasMLM():
         if torch.backends.mps.is_available() and fp_precision in ["8bit", "4bit"]:
             raise ValueError("bitsandbytes 8-bit and 4-bit quantization is not supported on Apple MPS. Please use 'float16' or 'float32' instead.")
 
-# Special handling for 8-bit and 4-bit quantization
+        # Special handling for 8-bit and 4-bit quantization
         if fp_precision in ["8bit", "4bit"]:
             if fp_precision == "8bit":
                 quantization_config = BitsAndBytesConfig(
@@ -61,17 +61,32 @@ class BiasMLM():
 
             self.model = AutoModelForMaskedLM.from_pretrained(
                 model_name_or_path,
-                quantization_config=quantization_config
+                quantization_config=quantization_config,
+                output_attentions = True
             )
         else:
             torch_dtype = precision_map.get(fp_precision, torch.float32)
 
             self.model = AutoModelForMaskedLM.from_pretrained(
                 model_name_or_path,
-                torch_dtype=torch_dtype
+                torch_dtype=torch_dtype,
+                output_attentions = True
             ).to(device)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
         self.mask_id = self.tokenizer.mask_token_id
+
+
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path)
+        self.mask_id = self.tokenizer.mask_token_id
+        self.device = None
+        
+
+        self.model.eval()
+        test_special = self.tokenizer.encode('test', add_special_tokens=True, return_tensors='pt')
+        self.special_tok_s = test_special[0].tolist()[0]
+        self.special_tok_e = test_special[0].tolist()[-1]
+        self.supported_measures = SUPPORTED_MEASURES
+        self.supported_measures_attention = SUPPORTED_MEASURES_ATTENTION
 
 
 
@@ -109,63 +124,7 @@ class BiasMLM():
         # )
 
         # self.model = AutoModelForMaskedLM.from_config(self.model_config)
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path)
-        self.mask_id = self.tokenizer.mask_token_id
-        self.device = None
         
-        # if device is None:
-        #     if torch.cuda.is_available():
-        #         device = "cuda"
-        #     elif torch.backends.mps.is_available():
-        #         device = "mps"
-        #     else:
-        #         device = "cpu"
-        # if device is not None:
-        #     if device == 'cuda' and not torch.cuda.is_available():
-        #         raise Exception("CUDA Not Available")
-        #     elif device == 'mps' and not torch.backends.mps.is_available():
-        #         raise Exception("MPS Not Available")
-        #     self.device = device
-        # else:
-        #     # Auto-detect device preference
-        #     if torch.cuda.is_available():
-        #         self.device = 'cuda'
-        #     elif torch.backends.mps.is_available():
-        #         self.device = 'mps'
-        #     else:
-        #         self.device = 'cpu'
-        # print("OUR DEVICE IS", self.device)
-        # if fp_precision in ["float16", "bfloat16"]:
-        #     torch_dtype = precision_map.get(fp_precision, torch.float32)
-
-        #     self.model = AutoModelForMaskedLM.from_pretrained(
-        #         self.model_name_or_path,
-        #         torch_dtype=torch_dtype
-        #     ).to(self.device)
-
-        #     # If model still loads in FP32, manually convert
-        #     if next(self.model.parameters()).dtype == torch.float32 and fp_precision == "float16":
-        #         print("Warning: Model loaded in FP32, forcing conversion to FP16.")
-        #         self.model = self.model.half()
-                
-        # self.model.to(self.device)
-        # print(f"Model loaded: {self.model_name_or_path}")
-        # print(f"Precision: {fp_precision}")
-        # print(f"Model dtype after loading: {next(self.model.parameters()).dtype}")
-
-
-        # for name, param in self.model.named_parameters():
-        #     if isinstance(param, (Int8Params, Params4bit)):
-        #         print(f"Layer {name} is quantized with {type(param)}")
-        # print(f"Memory allocated: {torch.cuda.memory_allocated() / 1e6} MB")
-
-        # print(f"Device: {self.device}")
-        self.model.eval()
-        test_special = self.tokenizer.encode('test', add_special_tokens=True, return_tensors='pt')
-        self.special_tok_s = test_special[0].tolist()[0]
-        self.special_tok_e = test_special[0].tolist()[-1]
-        self.supported_measures = SUPPORTED_MEASURES
-        self.supported_measures_attention = SUPPORTED_MEASURES_ATTENTION
 
     def __getitem__(self, key):
         return getattr(self, key)
