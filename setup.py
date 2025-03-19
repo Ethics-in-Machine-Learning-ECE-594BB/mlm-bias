@@ -17,7 +17,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         "transformers>=4.35.0",
-        "numpy>=1.23.5,<2",
+        "numpy>=1.23.5",
         "pandas>=2.0.3",
         "torch>=2.1.0",
         "regex>=2023.3.23"

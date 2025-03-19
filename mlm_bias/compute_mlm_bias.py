@@ -33,18 +33,37 @@ class BiasMLM():
         device: Optional[str] = None,
         fp_precision: Optional[str] = "float32", 
     ):
+        # self.results = BiasResults()
+        # self.dataset = dataset
+        # self.model_name_or_path = model_name_or_path
+        # self.model_config = AutoConfig.from_pretrained(
+        #     pretrained_model_name_or_path=self.model_name_or_path,
+        #     output_hidden_states=True,
+        #     output_attentions=True,
+        #     attn_implementation="eager")
+        # self.model = AutoModelForMaskedLM.from_config(self.model_config)
+        # self.model = AutoModelForMaskedLM.from_pretrained(self.model_name_or_path)
+
+        # self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path)
+        # self.mask_id = self.tokenizer.mask_token_id
         self.results = BiasResults()
         self.dataset = dataset
         self.model_name_or_path = model_name_or_path
+
         self.model_config = AutoConfig.from_pretrained(
             pretrained_model_name_or_path=self.model_name_or_path,
             output_hidden_states=True,
             output_attentions=True,
-            attn_implementation="eager")
-        self.model = AutoModelForMaskedLM.from_config(self.model_config)
-        
+            attn_implementation="eager"
+        )
+
+        # ✅ FIX: Load pre-trained weights
+        # self.model = AutoModelForMaskedLM.from_pretrained(self.model_name_or_path)  
+        self.model = AutoModelForMaskedLM.from_pretrained(self.model_name_or_path, config=self.model_config)
+
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path)
         self.mask_id = self.tokenizer.mask_token_id
+
         self.device = None
         if device is None:
             if torch.cuda.is_available():
@@ -208,11 +227,11 @@ class BiasMLM():
                         self.eval_results[f'S2']['aula'].append(mj_adv['aula'])
                 if 'csps' in measures:
                     dis_spans, adv_spans = get_span(token_ids_dis[0], token_ids_adv[0], 'equal')
-                    # mj_dis = compute_csps(self.model, token_ids_dis, dis_spans, self.mask_id, log_softmax=True)
-                    # mj_adv = compute_csps(self.model, token_ids_adv, adv_spans, self.mask_id, log_softmax=True)
-                    mj_dis = compute_csps(self.model, self.tokenizer, token_ids_dis, dis_spans, self.mask_id, log_softmax=True)
-                    mj_adv = compute_csps(self.model, self.tokenizer, token_ids_adv, adv_spans, self.mask_id, log_softmax=True)
-
+                    mj_dis = compute_csps(self.model, token_ids_dis, dis_spans, self.mask_id, log_softmax=True)
+                    mj_adv = compute_csps(self.model, token_ids_adv, adv_spans, self.mask_id, log_softmax=True)
+                    # mj_dis = compute_csps(self.model, self.tokenizer, token_ids_dis, dis_spans, self.mask_id, log_softmax=True)
+                    # mj_adv = compute_csps(self.model, self.tokenizer, token_ids_adv, adv_spans, self.mask_id, log_softmax=True)
+                    # print(mj_dis)
                     self.eval_results[f'S1']['csps'].append(mj_dis['csps'])
                     self.eval_results[f'S2']['csps'].append(mj_adv['csps'])
                 if 'sss' in measures:
@@ -225,6 +244,7 @@ class BiasMLM():
         end_progress()
         self.measures = measures
         self.scores()
+
         self.results(
             self.model_name_or_path,
             self.measures,

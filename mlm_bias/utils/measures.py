@@ -127,40 +127,8 @@ def compute_aul(model, token_ids, attention=True, log_softmax=True):
         "ranks": ranks,
     }
 
-# @torch.no_grad()
-# def compute_csps(model, token_ids, spans, mask_id, log_softmax=True):
-#     device = next(model.parameters()).device
-#     token_ids = token_ids.to(device)
-
-#     if log_softmax:
-#         f_softmax = torch.nn.LogSoftmax(dim=1)
-#     else:
-#         f_softmax = torch.nn.Softmax(dim=1)
-
-#     spans = spans[1:-1]
-#     masked_token_ids = token_ids.repeat(len(spans), 1).to(device)
-#     masked_token_ids[range(masked_token_ids.size(0)), spans] = mask_id
-
-#     hidden_states = get_mlm_output(model, masked_token_ids)[0].to(device)
-#     token_ids = token_ids.view(-1)[spans].to(device)
-
-#     probs = f_softmax(hidden_states[range(hidden_states.size(0)), spans, :]).to(device)
-#     span_probs = probs[range(hidden_states.size(0)), token_ids].to(device)
-
-#     score = torch.sum(span_probs).item()
-
-#     sorted_indexes = torch.sort(probs, dim=1, descending=True)[1].to(device)
-#     ranks = torch.where(sorted_indexes == token_ids.view(-1, 1))[1] + 1
-#     ranks = ranks.tolist()
-
-#     return {
-#         "csps": score,
-#         "ranks": ranks,
-#     }
-
 @torch.no_grad()
-def compute_csps(model, tokenizer, token_ids, spans, mask_id, log_softmax=True):
-
+def compute_csps(model, token_ids, spans, mask_id, log_softmax=True):
     device = next(model.parameters()).device
     token_ids = token_ids.to(device)
 
@@ -169,54 +137,87 @@ def compute_csps(model, tokenizer, token_ids, spans, mask_id, log_softmax=True):
     else:
         f_softmax = torch.nn.Softmax(dim=1)
 
-    spans = spans[1:-1]  # Remove special tokens like [CLS] and [SEP]
-    
-    # # Calculate percentage of masked tokens
-    # total_tokens = token_ids.shape[1]
-    # num_masked = len(spans)
-    # masked_percentage = (num_masked / total_tokens) * 100
-
-    # print(f"\n--- Masking Debug Info ---")
-    # print(f"Total Tokens: {total_tokens}, Masked Tokens: {num_masked} ({masked_percentage:.2f}%)")
-
+    spans = spans[1:-1]
     masked_token_ids = token_ids.repeat(len(spans), 1).to(device)
-    masked_token_ids[range(masked_token_ids.size(0)), spans] = mask_id  # Replace words with [MASK]
+    masked_token_ids[range(masked_token_ids.size(0)), spans] = mask_id
 
-    # Decode masked sentence
-    # masked_sentence = model.config.tokenizer.decode(masked_token_ids[0].tolist())
-    # masked_sentence = self.tokenizer.decode(masked_token_ids[0].tolist())
-    masked_sentence = tokenizer.decode(masked_token_ids[0].tolist())
-
-    print(f"Masked Sentence: {masked_sentence}")
-    
-    hidden_states = get_mlm_output(model, masked_token_ids)[0].to(device)  # Get MLM predictions
-    token_ids = token_ids.view(-1)[spans].to(device)  # Get original tokens that were masked
+    hidden_states = get_mlm_output(model, masked_token_ids)[0].to(device)
+    token_ids = token_ids.view(-1)[spans].to(device)
 
     probs = f_softmax(hidden_states[range(hidden_states.size(0)), spans, :]).to(device)
-    span_probs = probs[range(hidden_states.size(0)), token_ids].to(device)  # Probabilities of correct words
+    span_probs = probs[range(hidden_states.size(0)), token_ids].to(device)
 
-    # Compute total CSPS score
     score = torch.sum(span_probs).item()
 
-    # Get ranking of the correct word among all vocabulary predictions
     sorted_indexes = torch.sort(probs, dim=1, descending=True)[1].to(device)
     ranks = torch.where(sorted_indexes == token_ids.view(-1, 1))[1] + 1
     ranks = ranks.tolist()
-
-    # Print detailed debug info
-    print("\n--- CSPS Debug Info ---")
-    print("Masked Token Positions:", spans)
-
-    top_k = 5
-    for i, (prob, rank, span_idx) in enumerate(zip(span_probs.tolist(), ranks, spans)):
-        top_preds = [tokenizer.decode([idx.item()]) for idx in sorted_indexes[i, :top_k]]
-#         print(f"Position {span_idx}: Correct Word Probability = {prob:.6f}, Rank = {rank}")
-        print(f"Position {span_idx}: Correct Word Probability = {prob:.6f}, Rank = {rank}, Top Predictions: {top_preds}")
-
+    if len(ranks)%5 == 0:
+        print(ranks)    
     return {
-        "csps": score,  # CSPS score (sum of correct word probabilities)
-        "ranks": ranks,  # Rank of correct word among all predictions
+        "csps": score,
+        "ranks": ranks,
     }
+
+# @torch.no_grad()
+# def compute_csps(model, tokenizer, token_ids, spans, mask_id, log_softmax=True):
+
+#     device = next(model.parameters()).device
+#     token_ids = token_ids.to(device)
+
+#     if log_softmax:
+#         f_softmax = torch.nn.LogSoftmax(dim=1)
+#     else:
+#         f_softmax = torch.nn.Softmax(dim=1)
+
+#     spans = spans[1:-1]  # Remove special tokens like [CLS] and [SEP]
+    
+#     # # Calculate percentage of masked tokens
+#     # total_tokens = token_ids.shape[1]
+#     # num_masked = len(spans)
+#     # masked_percentage = (num_masked / total_tokens) * 100
+
+#     # print(f"\n--- Masking Debug Info ---")
+#     # print(f"Total Tokens: {total_tokens}, Masked Tokens: {num_masked} ({masked_percentage:.2f}%)")
+
+#     masked_token_ids = token_ids.repeat(len(spans), 1).to(device)
+#     masked_token_ids[range(masked_token_ids.size(0)), spans] = mask_id  # Replace words with [MASK]
+
+#     # Decode masked sentence
+#     # masked_sentence = model.config.tokenizer.decode(masked_token_ids[0].tolist())
+#     # masked_sentence = self.tokenizer.decode(masked_token_ids[0].tolist())
+#     masked_sentence = tokenizer.decode(masked_token_ids[0].tolist())
+
+#     print(f"Masked Sentence: {masked_sentence}")
+    
+#     hidden_states = get_mlm_output(model, masked_token_ids)[0].to(device)  # Get MLM predictions
+#     token_ids = token_ids.view(-1)[spans].to(device)  # Get original tokens that were masked
+
+#     probs = f_softmax(hidden_states[range(hidden_states.size(0)), spans, :]).to(device)
+#     span_probs = probs[range(hidden_states.size(0)), token_ids].to(device)  # Probabilities of correct words
+
+#     # Compute total CSPS score
+#     score = torch.sum(span_probs).item()
+
+#     # Get ranking of the correct word among all vocabulary predictions
+#     sorted_indexes = torch.sort(probs, dim=1, descending=True)[1].to(device)
+#     ranks = torch.where(sorted_indexes == token_ids.view(-1, 1))[1] + 1
+#     ranks = ranks.tolist()
+
+#     # Print detailed debug info
+#     print("\n--- CSPS Debug Info ---")
+#     print("Masked Token Positions:", spans)
+
+#     top_k = 5
+#     for i, (prob, rank, span_idx) in enumerate(zip(span_probs.tolist(), ranks, spans)):
+#         top_preds = [tokenizer.decode([idx.item()]) for idx in sorted_indexes[i, :top_k]]
+# #         print(f"Position {span_idx}: Correct Word Probability = {prob:.6f}, Rank = {rank}")
+#         print(f"Position {span_idx}: Correct Word Probability = {prob:.6f}, Rank = {rank}, Top Predictions: {top_preds}")
+    
+#     return {
+#         "csps": score,  # CSPS score (sum of correct word probabilities)
+#         "ranks": ranks,  # Rank of correct word among all predictions
+#     }
 
 
 # @torch.no_grad()
