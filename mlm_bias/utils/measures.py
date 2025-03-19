@@ -295,7 +295,7 @@ def compute_sss(model, token_ids, spans, mask_id, log_softmax=True):
         ranks = ranks.tolist()
     else:
         ranks = [-1]
-
+    print("SSS", ranks)
     return {
         "sss": score,
         "ranks": ranks,

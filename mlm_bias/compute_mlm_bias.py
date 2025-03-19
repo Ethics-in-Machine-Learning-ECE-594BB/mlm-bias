@@ -247,9 +247,24 @@ class BiasMLM():
                     mj_dis = compute_sss(self.model, token_ids_dis, dis_spans, self.mask_id, log_softmax=True)
                     mj_adv = compute_sss(self.model, token_ids_adv, adv_spans, self.mask_id, log_softmax=True)
                     # Ensure 'ranks' exists in the eval_results structure before appending
+                    # Ensure 'sss' and 'sss_ranks' keys exist in the eval_results structure before appending
+                    if "sss" not in self.eval_results[f'S1']:
+                        self.eval_results[f'S1']["sss"] = []
+                    if "sss_ranks" not in self.eval_results[f'S1']:
+                        self.eval_results[f'S1']["sss_ranks"] = []
 
+                    if "sss" not in self.eval_results[f'S2']:
+                        self.eval_results[f'S2']["sss"] = []
+                    if "sss_ranks" not in self.eval_results[f'S2']:
+                        self.eval_results[f'S2']["sss_ranks"] = []
+
+                    # Append the computed sss scores and ranks
                     self.eval_results[f'S1']['sss'].append(mj_dis['sss'])
+                    self.eval_results[f'S1']['sss_ranks'].append(mj_dis['ranks'])
+
                     self.eval_results[f'S2']['sss'].append(mj_adv['sss'])
+                    self.eval_results[f'S2']['sss_ranks'].append(mj_adv['ranks'])
+
                     # if "ranks" not in self.eval_results[f'S1']:
                     #     self.eval_results[f'S1']["ranks"] = []
                     # if "ranks" not in self.eval_results[f'S2']:
