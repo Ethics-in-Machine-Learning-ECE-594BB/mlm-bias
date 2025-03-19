@@ -36,7 +36,6 @@ target/
 .vscode
 lib/
 *.cmd
-*.ipynb
 .python-version
 mlm_bias.egg-info/
 dist/
