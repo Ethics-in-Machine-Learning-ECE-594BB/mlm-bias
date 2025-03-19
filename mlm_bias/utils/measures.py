@@ -152,7 +152,7 @@ def compute_csps(model, token_ids, spans, mask_id, log_softmax=True):
     sorted_indexes = torch.sort(probs, dim=1, descending=True)[1].to(device)
     ranks = torch.where(sorted_indexes == token_ids.view(-1, 1))[1] + 1
     ranks = ranks.tolist()
-    if len(ranks)%5 == 0:
+    if len(ranks)%1 == 0:
         print(ranks)    
     return {
         "csps": score,
