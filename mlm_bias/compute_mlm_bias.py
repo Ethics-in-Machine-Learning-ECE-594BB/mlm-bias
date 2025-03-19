@@ -234,6 +234,11 @@ class BiasMLM():
                     # print(mj_dis)
                     self.eval_results[f'S1']['csps'].append(mj_dis['csps'])
                     self.eval_results[f'S2']['csps'].append(mj_adv['csps'])
+                    # Ensure 'ranks' exists in the eval_results structure before appending
+                    if "ranks" not in self.eval_results[f'S1']:
+                        self.eval_results[f'S1']["ranks"] = []
+                    if "ranks" not in self.eval_results[f'S2']:
+                        self.eval_results[f'S2']["ranks"] = []
                     # Append the ranks values
                     self.eval_results[f'S1']['ranks'].append(mj_dis['ranks'])
                     self.eval_results[f'S2']['ranks'].append(mj_adv['ranks'])
@@ -241,10 +246,16 @@ class BiasMLM():
                     dis_spans, adv_spans = get_span(token_ids_dis[0], token_ids_adv[0], 'diff')
                     mj_dis = compute_sss(self.model, token_ids_dis, dis_spans, self.mask_id, log_softmax=True)
                     mj_adv = compute_sss(self.model, token_ids_adv, adv_spans, self.mask_id, log_softmax=True)
+                    # Ensure 'ranks' exists in the eval_results structure before appending
+
                     self.eval_results[f'S1']['sss'].append(mj_dis['sss'])
                     self.eval_results[f'S2']['sss'].append(mj_adv['sss'])
-                    self.eval_results[f'S1']['sss'].append(mj_dis['ranks'])
-                    self.eval_results[f'S2']['sss'].append(mj_adv['ranks'])
+                    # if "ranks" not in self.eval_results[f'S1']:
+                    #     self.eval_results[f'S1']["ranks"] = []
+                    # if "ranks" not in self.eval_results[f'S2']:
+                    #     self.eval_results[f'S2']["ranks"] = []
+                    # self.eval_results[f'S1']['sss'].append(mj_dis['ranks'])
+                    # self.eval_results[f'S2']['sss'].append(mj_adv['ranks'])
         show_progress(index+1, len(self.dataset), f"Evaluating Bias [{self.model_name_or_path}]", start_time)
         end_progress()
         self.measures = measures
